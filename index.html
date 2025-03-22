@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Art Creator</title>
+    <style>
+        /* General Body Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url('https://t3.ftcdn.net/jpg/06/05/63/96/360_F_605639623_v9uvhXjM8BpdmBmJzREZ9yduy5LCYZH6.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: white;
+            flex-direction: column;
+        }
+
+        /* Container for the entire content */
+        .container {
+            text-align: center;
+            background-color: rgba(30, 30, 30, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            width: 80%;
+        }
+
+        /* Button container to align buttons above the grid */
+        .button-container {
+            margin-bottom: 20px;
+        }
+
+        /* Pixel Art Section: Grid and Output side by side */
+        .pixel-art-section {
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        /* Pixel grid styling */
+        .pixel-grid {
+            display: grid;
+            grid-template-columns: repeat(25, 25px);
+            /* 25x25 grid, with 25px per pixel */
+            grid-gap: 1px;
+            background-color: #333;
+            border: 3px solid #4caf50;
+            border-radius: 8px;
+        }
+
+        .pixel {
+            background-color: #ffffff;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            border: 1px solid #333;
+            /* Making grid lines visible */
+        }
+
+        /* Premium border for canvas */
+        canvas {
+            border: 3px solid #4caf50;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        /* Styling for buttons */
+        button {
+            padding: 10px 20px;
+            background-color: #4caf50;
+            border: 2px solid #4caf50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        /* Button animation for glowing effect */
+        button:hover {
+            box-shadow: 0 0 10px #4caf50, 0 0 20px #4caf50, 0 0 30px #4caf50;
+            transform: scale(1.05);
+            background-color: #45a049;
+        }
+
+        /* Glowing effect for title */
+        h1 {
+            color: #4caf50;
+            text-shadow: 0 0 5px #4caf50, 0 0 10px #4caf50, 0 0 15px #4caf50;
+        }
+
+        /* Header */
+        h3 {
+            color: #4caf50;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Pixel Art Creator</h1>
+
+        <!-- Button Section -->
+        <div class="button-container">
+            <input type="color" id="color-picker" value="#000000" />
+            <button id="clear-btn">Clear Grid</button>
+            <button id="done-btn">Done</button>
+            <button id="download-btn">Download</button>
+            <button id="eraser-btn">Eraser</button>
+        </div>
+
+        <!-- Pixel Art Section: Grid and Output Canvas Side by Side -->
+        <div class="pixel-art-section">
+            <!-- Grid container for the pixel grid -->
+            <div id="grid-container" class="pixel-grid"></div>
+
+            <!-- Canvas section for output -->
+            <div id="output">
+                <h3>Your Pixel Art:</h3>
+                <canvas id="art-canvas" width="600" height="600"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pixelSize = 25; // 25x25 grid
+        let isEraserActive = false;
+        const gridContainer = document.getElementById('grid-container');
+        const colorPicker = document.getElementById('color-picker');
+        const clearBtn = document.getElementById('clear-btn');
+        const doneBtn = document.getElementById('done-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const eraserBtn = document.getElementById('eraser-btn');
+        const artCanvas = document.getElementById('art-canvas');
+        const ctx = artCanvas.getContext('2d');
+
+        const canvasWidth = 600;
+        const canvasHeight = 600;
+
+        let gridState = []; // To store the pixel grid state (colors)
+
+        // Function to create pixel grid
+        function createPixelGrid(size) {
+            gridContainer.innerHTML = '';
+            const pixelDimension = canvasWidth / size;
+            gridContainer.style.gridTemplateColumns = `repeat(${size}, ${pixelDimension}px)`;
+            gridContainer.style.gridTemplateRows = `repeat(${size}, ${pixelDimension}px)`;
+
+            // Reset gridState when changing size
+            const newGridState = Array(size * size).fill('#ffffff');
+            gridState = newGridState;
+
+            for (let i = 0; i < size * size; i++) {
+                const pixel = document.createElement('div');
+                pixel.classList.add('pixel');
+                pixel.style.width = `${pixelDimension}px`;
+                pixel.style.height = `${pixelDimension}px`;
+
+                // Set color from gridState if available
+                pixel.style.backgroundColor = gridState[i] || '#ffffff';
+
+                pixel.addEventListener('click', () => {
+                    if (isEraserActive) {
+                        pixel.style.backgroundColor = '#ffffff'; // Erase the pixel
+                        gridState[i] = '#ffffff'; // Update grid state
+                    } else {
+                        pixel.style.backgroundColor = colorPicker.value; // Color the pixel
+                        gridState[i] = colorPicker.value; // Update grid state
+                    }
+                    updateCanvas(); // Update canvas drawing on each pixel click
+                });
+
+                gridContainer.appendChild(pixel);
+            }
+        }
+
+        // Function to update the canvas based on the grid
+        function updateCanvas() {
+            const pixelDimension = canvasWidth / pixelSize;
+            ctx.clearRect(0, 0, artCanvas.width, artCanvas.height); // Clear canvas before redrawing
+
+            gridState.forEach((color, index) => {
+                const x = index % pixelSize;
+                const y = Math.floor(index / pixelSize);
+                ctx.fillStyle = color;
+                ctx.fillRect(x * pixelDimension, y * pixelDimension, pixelDimension, pixelDimension);
+            });
+        }
+
+        // Function to clear the grid
+        clearBtn.addEventListener('click', () => {
+            const pixels = document.querySelectorAll('.pixel');
+            pixels.forEach(pixel => pixel.style.backgroundColor = '#ffffff');
+            gridState = Array(pixelSize * pixelSize).fill('#ffffff'); // Reset grid state
+            ctx.clearRect(0, 0, artCanvas.width, artCanvas.height);
+        });
+
+        // Done button to display the output
+        doneBtn.addEventListener('click', () => {
+            updateCanvas(); // Update the canvas with the current grid state
+        });
+
+        // Download button to download the image as PNG
+        downloadBtn.addEventListener('click', () => {
+            const dataURL = artCanvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = 'pixel-art.png';
+            link.click();
+        });
+
+        // Eraser button functionality
+        eraserBtn.addEventListener('click', () => {
+            isEraserActive = !isEraserActive; // Toggle eraser mode on or off
+            if (isEraserActive) {
+                eraserBtn.style.backgroundColor = "#ddd"; // Indicate the eraser is active
+            } else {
+                eraserBtn.style.backgroundColor = ""; // Remove indication
+            }
+        });
+
+        // Initialize the grid
+        createPixelGrid(pixelSize);
+    </script>
+
+</body>
+
+</html>
